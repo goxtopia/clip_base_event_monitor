@@ -1,0 +1,12 @@
+chromadb
+loguru
+numpy
+open_clip_torch
+opencv-python
+pandas
+pillow
+plotly
+pydantic
+streamlit
+transformers
+watchfiles
