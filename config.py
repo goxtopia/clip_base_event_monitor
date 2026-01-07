@@ -29,7 +29,7 @@ class Config(BaseModel):
 
     # VideoMAE Settings
     VIDEOMAE_MODEL_NAME: str = "OpenGVLab/VideoMAEv2-Base"
-    VIDEOMAE_CLIP_SIZE: int = 8
+    VIDEOMAE_CLIP_SIZE: int = 16
     VIDEOMAE_SAMPLE_RATE: float = 1.0
     
     # YOLO Settings
