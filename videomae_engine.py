@@ -40,7 +40,13 @@ class VideoMAEEngine:
         with torch.no_grad():
             outputs = self.model(**inputs)
             if isinstance(outputs, torch.Tensor):
-                clip_features = outputs
+                # If the model returns a raw tensor, check its dimensions.
+                # If it's 2D [Batch, Dim], it's already pooled.
+                # If it's 3D [Batch, Seq, Dim], we need to pool it.
+                if outputs.dim() == 3:
+                    clip_features = outputs.mean(dim=1)
+                else:
+                    clip_features = outputs
             elif hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
                 clip_features = outputs.pooler_output
             else:
