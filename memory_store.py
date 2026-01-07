@@ -53,6 +53,14 @@ class MemoryStore:
         vectors = np.array(self.short_term_buffer)
         return np.mean(vectors, axis=0)
 
+    def get_short_term_vectors(self) -> np.ndarray:
+        """
+        Return short-term vectors as a numpy array.
+        """
+        if not self.short_term_buffer:
+            return None
+        return np.array(self.short_term_buffer)
+
     def query_long_term_history(self, vector: list[float], timestamp: float, n_results: int = 3) -> float:
         """
         Query long-term history for similar vectors from yesterday or last week at the same hour.

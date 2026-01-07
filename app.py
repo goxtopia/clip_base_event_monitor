@@ -87,11 +87,21 @@ with st.sidebar:
     
     threshold = st.slider("Anomaly Threshold", 0.0, 1.0, settings.SIMILARITY_THRESHOLD, 0.05)
     settings.SIMILARITY_THRESHOLD = threshold
+
+    anomaly_method = st.selectbox(
+        "Anomaly Method",
+        ["cosine", "zscore"],
+        index=["cosine", "zscore"].index(settings.ANOMALY_METHOD)
+    )
+    settings.ANOMALY_METHOD = anomaly_method
+    if settings.ANOMALY_METHOD == "zscore":
+        zscore_threshold = st.slider("Z-Score Threshold", 0.5, 5.0, settings.ZSCORE_THRESHOLD, 0.1)
+        settings.ZSCORE_THRESHOLD = zscore_threshold
     
     st.divider()
     st.subheader("Motion Detection")
     motion_blur = st.slider("Denoise Blur Size", 1, 51, settings.MOTION_BLUR_SIZE, 2)
-    motion_thresh = st.slider("Motion Threshold", 0.0, 100.0, settings.MOTION_THRESHOLD, 1.0)
+    motion_thresh = st.slider("Motion Area Threshold (px²)", 0.0, 50000.0, settings.MOTION_THRESHOLD, 100.0)
     system.update_motion_settings(motion_blur, motion_thresh)
     
     st.divider()

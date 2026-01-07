@@ -7,6 +7,7 @@ class MotionDetector:
         # Using MOG2 for background subtraction
         self.var_threshold = 16
         self.blur_size = settings.MOTION_BLUR_SIZE
+        self.motion_area_threshold = settings.MOTION_THRESHOLD
         self.back_sub = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=self.var_threshold, detectShadows=True)
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
 
@@ -14,9 +15,7 @@ class MotionDetector:
         if blur_size % 2 == 0: 
             blur_size += 1
         self.blur_size = blur_size
-        if abs(self.var_threshold - threshold) > 0.1:
-            self.var_threshold = threshold
-            self.back_sub.setVarThreshold(threshold)
+        self.motion_area_threshold = threshold
 
     def detect(self, frame: np.ndarray) -> tuple[bool, tuple[int, int, int, int]]:
         """
@@ -41,16 +40,18 @@ class MotionDetector:
         contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         max_area = 0
+        total_moving_area = 0
         best_box = None
         
         for contour in contours:
             area = cv2.contourArea(contour)
             if area > settings.MIN_CONTOUR_AREA:
+                total_moving_area += area
                 if area > max_area:
                     max_area = area
                     best_box = cv2.boundingRect(contour)
         
-        if best_box is not None:
+        if best_box is not None and total_moving_area >= self.motion_area_threshold:
             return True, best_box
         
         return False, None

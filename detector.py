@@ -14,7 +14,7 @@ class AnomalyDetector:
     def detect(self, current_vector: list[float], timestamp: float) -> dict:
         """
         Detects anomaly based on short-term and long-term history.
-        Returns: dict with keys 'is_anomaly', 'reason', 'sim_short', 'sim_long'
+        Returns: dict with keys 'is_anomaly', 'reason', 'sim_short', 'sim_long', 'zscore'
         """
         curr_vec_np = np.array(current_vector)
         
@@ -32,20 +32,41 @@ class AnomalyDetector:
 
         is_anomaly = False
         reason = "Normal"
+        zscore = None
 
-        if sim_short >= settings.SIMILARITY_THRESHOLD:
-             reason = "Normal (Short-term stable)"
-        elif sim_long < settings.SIMILARITY_THRESHOLD:
-            # Both short-term (change happened) AND long-term (unusual for this time) are low
-            is_anomaly = True
-            reason = f"Anomaly Detected! (Short: {sim_short:.2f}, Long: {sim_long:.2f})"
+        if settings.ANOMALY_METHOD == "zscore":
+            short_term_vectors = self.memory_store.get_short_term_vectors()
+            if short_term_vectors is not None and len(short_term_vectors) > 1:
+                sims = short_term_vectors @ curr_vec_np
+                mean_sims = float(np.mean(sims))
+                std_sims = float(np.std(sims))
+                if std_sims > 0:
+                    zscore = (sim_short - mean_sims) / std_sims
+
+            if zscore is None:
+                reason = "Normal (Insufficient history)"
+            elif zscore >= -settings.ZSCORE_THRESHOLD:
+                reason = f"Normal (Z: {zscore:.2f})"
+            elif sim_long < settings.SIMILARITY_THRESHOLD:
+                is_anomaly = True
+                reason = f"Anomaly Detected! (Z: {zscore:.2f}, Long: {sim_long:.2f})"
+            else:
+                reason = f"Normal (Historical Match: {sim_long:.2f})"
         else:
-            # Short-term change, but matches historical pattern
-            reason = f"Normal (Historical Match: {sim_long:.2f})"
+            if sim_short >= settings.SIMILARITY_THRESHOLD:
+                 reason = "Normal (Short-term stable)"
+            elif sim_long < settings.SIMILARITY_THRESHOLD:
+                # Both short-term (change happened) AND long-term (unusual for this time) are low
+                is_anomaly = True
+                reason = f"Anomaly Detected! (Short: {sim_short:.2f}, Long: {sim_long:.2f})"
+            else:
+                # Short-term change, but matches historical pattern
+                reason = f"Normal (Historical Match: {sim_long:.2f})"
 
         return {
             "is_anomaly": is_anomaly,
             "reason": reason,
             "sim_short": sim_short,
-            "sim_long": sim_long
+            "sim_long": sim_long,
+            "zscore": zscore
         }
