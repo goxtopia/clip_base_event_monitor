@@ -39,7 +39,9 @@ class VideoMAEEngine:
 
         with torch.no_grad():
             outputs = self.model(**inputs)
-            if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
+            if isinstance(outputs, torch.Tensor):
+                clip_features = outputs
+            elif hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
                 clip_features = outputs.pooler_output
             else:
                 clip_features = outputs.last_hidden_state.mean(dim=1)
