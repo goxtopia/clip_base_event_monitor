@@ -108,6 +108,8 @@ with col2:
 
 if "chart_data" not in st.session_state:
     st.session_state.chart_data = pd.DataFrame(columns=["Time", "Similarity", "LongTerm", "Threshold"])
+if "chart_key" not in st.session_state:
+    st.session_state.chart_key = 0
 
 while True:
     result = system.process_step()
@@ -168,4 +170,10 @@ while True:
             height=260,
             margin=dict(l=10, r=10, t=10, b=10)
         )
-        chart_placeholder.plotly_chart(fig, key="similarity_chart", width="stretch")
+        st.session_state.chart_key += 1
+        chart_placeholder.empty()
+        chart_placeholder.plotly_chart(
+            fig,
+            key=f"similarity_chart_{st.session_state.chart_key}",
+            width="stretch",
+        )
