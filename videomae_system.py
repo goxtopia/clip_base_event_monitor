@@ -92,9 +92,19 @@ class VideoMAESentinelSystem:
                 gif_filename = f"anomaly_{int(timestamp)}.gif"
                 gif_path = os.path.join(settings.ANOMALY_CLIP_DIR, gif_filename)
 
-                # Prepare frames for GIF (Convert BGR to RGB)
-                gif_frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in self.frame_buffer]
-                imageio.mimsave(gif_path, gif_frames, fps=settings.VIDEOMAE_SAMPLE_RATE)
+                # Prepare frames for GIF (Convert BGR to RGB and Resize)
+                gif_frames = []
+                target_width = 320
+                for f in self.frame_buffer:
+                    rgb = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
+                    h, w = rgb.shape[:2]
+                    scale = target_width / w
+                    new_h = int(h * scale)
+                    resized = cv2.resize(rgb, (target_width, new_h), interpolation=cv2.INTER_AREA)
+                    gif_frames.append(resized)
+
+                # Save optimized GIF with subrectangles optimization to further reduce size
+                imageio.mimsave(gif_path, gif_frames, fps=settings.VIDEOMAE_SAMPLE_RATE, subrectangles=True)
             except Exception as e:
                 logger.error(f"Failed to save anomaly GIF: {e}")
 
