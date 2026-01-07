@@ -26,6 +26,27 @@ graph LR
 *   **Detector**: Dual-stage verification logic (Short-term Cosine Similarity + Long-term History Match).
 *   **WebUI**: `Streamlit` dashboard with Sci-Fi aesthetics, real-time charts, and visual anomaly history.
 
+## 🔍 Detection Flow (当前检测流程)
+1. **Frame Sampling**：`StreamLoader` 按 `SAMPLE_RATE` 获取最新帧。
+2. **Motion Detection**：
+   - 使用 MOG2 背景建模得到前景掩码。
+   - 二值化 + 形态学开运算去噪。
+   - 统计所有轮廓面积（单个轮廓需 ≥ `MIN_CONTOUR_AREA`），并计算**总移动面积**。
+   - 当总移动面积 ≥ `MOTION_THRESHOLD` 时触发运动，并选取最大轮廓作为 `motion_box`。
+3. **YOLO Detection**：识别指定类别目标，得到 `yolo_boxes`。
+4. **ROI 合并**：合并 `motion_box` 与 `yolo_boxes`，计算外接矩形作为最终 ROI，进行裁剪。
+5. **CLIP 编码**：对 ROI 做图像向量化。
+6. **Zero-shot 分类**：基于文本标签推断场景语义（用于解释/过滤）。
+7. **异常检测**：短期相似度 + 长期历史验证，输出异常原因。
+8. **更新记忆**：写入短期/长期向量库，用于后续对比。
+
+## 🎬 VideoMAE Motion-Only Flow
+1. **Frame Sampling**：`StreamLoader` 以 1 FPS 采样连续帧，构建 8 秒滑动窗口。
+2. **Motion Detection**：只做运动检测，不裁剪 ROI，也不使用 YOLO。
+3. **VideoMAE 编码**：窗口满 8 帧后，对整段视频做 VideoMAE 编码。
+4. **异常检测**：短期/长期相似度对比，输出异常原因。
+5. **更新记忆**：将 VideoMAE 向量写入短期/长期存储。
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -49,7 +70,14 @@ streamlit run app.py
 ```
 Access the dashboard at `http://localhost:8501`.
 
-**2. Run CLI Mode**
+**2. Run VideoMAE Motion-Only Dashboard**
+This launches the VideoMAE + Motion-only pipeline (no YOLO, no ROI crop).
+```bash
+streamlit run videomae_app.py
+```
+Access the dashboard at `http://localhost:8501`.
+
+**3. Run CLI Mode**
 If you only need the backend process with logging:
 ```bash
 python main.py
@@ -62,6 +90,13 @@ Edit `config.py` to adjust settings:
 *   `SAMPLE_RATE`: Frames per second to process (default: 1.0).
 *   `SIMILARITY_THRESHOLD`: Cosine similarity threshold for anomaly detection (default: 0.85).
 *   `HISTORY_WINDOW_SIZE`: Number of frames for short-term moving average.
+*   `ANOMALY_METHOD`: `cosine` or `zscore` anomaly scoring method.
+*   `ZSCORE_THRESHOLD`: Threshold for z-score based detection (higher = less sensitive).
+*   `MOTION_THRESHOLD`: Total moving area threshold (sum of motion contour areas).
+*   `MIN_CONTOUR_AREA`: Minimum contour area to be counted as motion.
+*   `VIDEOMAE_MODEL_NAME`: VideoMAE model ID used in the motion-only app.
+*   `VIDEOMAE_CLIP_SIZE`: Sliding window size (seconds / frames at 1 FPS).
+*   `VIDEOMAE_SAMPLE_RATE`: Sampling FPS for the VideoMAE sliding window.
 *   `DB_PATH`: Path for ChromaDB persistence.
 
 ## 🛠 Tech Stack

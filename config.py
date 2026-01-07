@@ -9,6 +9,8 @@ class Config(BaseModel):
     # Detection Settings
     SIMILARITY_THRESHOLD: float = 0.85
     HISTORY_WINDOW_SIZE: int = 60  # Short-term memory size (e.g., 60 seconds)
+    ANOMALY_METHOD: str = "cosine"  # cosine | zscore
+    ZSCORE_THRESHOLD: float = 2.0
 
     # Storage Settings
     DB_PATH: str = "./chroma_db"
@@ -20,10 +22,15 @@ class Config(BaseModel):
     PRETRAINED_WEIGHTS: str = "webli"
     
     # ROI Settings
-    MOTION_THRESHOLD: float = 25.0  # Pixel difference threshold
-    MIN_CONTOUR_AREA: int = 500     # Minimum area to be considered motion
+    MOTION_THRESHOLD: float = 2000.0  # Total moving area threshold (sum of contour areas)
+    MIN_CONTOUR_AREA: int = 500     # Minimum contour area to be considered motion
     MOTION_BLUR_SIZE: int = 21      # Gaussian Blur size (must be odd)
     ZERO_SHOT_LABELS: list[str] = ["a person", "a dog", "shadow", "light change"]
+
+    # VideoMAE Settings
+    VIDEOMAE_MODEL_NAME: str = "OpenGVLab/VideoMAEv2-Base"
+    VIDEOMAE_CLIP_SIZE: int = 8
+    VIDEOMAE_SAMPLE_RATE: float = 1.0
     
     # YOLO Settings
     YOLO_MODEL_NAME: str = "yolov8n.pt"
