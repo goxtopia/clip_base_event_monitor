@@ -32,12 +32,9 @@ class VideoMAEEngine:
             Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             for frame in frames
         ]
-        inputs = self.processor([rgb_frames], return_tensors="pt")
+        inputs = self.processor(rgb_frames, return_tensors="pt")
         if "pixel_values" in inputs:
-            pixel_values = inputs["pixel_values"]
-            if pixel_values.dim() == 4:
-                pixel_values = pixel_values.unsqueeze(0)
-            inputs["pixel_values"] = pixel_values
+            inputs["pixel_values"] = inputs["pixel_values"].permute(0, 2, 1, 3, 4)
         inputs = {key: value.to(settings.DEVICE) for key, value in inputs.items()}
 
         with torch.no_grad():
