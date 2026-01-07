@@ -177,3 +177,26 @@ while True:
             key=f"similarity_chart_{st.session_state.chart_key}",
             width="stretch",
         )
+
+    # Anomaly History Section
+    with st.expander("Anomaly History (Last 10)", expanded=True):
+        anomalies = system.memory_store.get_recent_anomalies(limit=10)
+        if anomalies:
+            # Create grid layout
+            cols = st.columns(3)
+            for idx, anomaly in enumerate(anomalies):
+                with cols[idx % 3]:
+                    ts = anomaly.get("timestamp", 0)
+                    dt_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+                    st.caption(f"🚨 {dt_str}")
+
+                    gif_path = anomaly.get("gif_path")
+                    if gif_path:
+                        try:
+                            st.image(gif_path)
+                        except Exception as e:
+                            st.error(f"Error loading GIF: {e}")
+                    else:
+                        st.text("No preview available")
+        else:
+            st.info("No anomalies recorded yet.")

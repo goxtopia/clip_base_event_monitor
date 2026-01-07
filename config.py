@@ -30,8 +30,11 @@ class Config(BaseModel):
     # VideoMAE Settings
     VIDEOMAE_MODEL_NAME: str = "OpenGVLab/VideoMAEv2-Base"
     VIDEOMAE_CLIP_SIZE: int = 16
-    VIDEOMAE_SAMPLE_RATE: float = 1.0
+    VIDEOMAE_SAMPLE_RATE: float = 2.0
     
+    # Storage Settings
+    ANOMALY_CLIP_DIR: str = "./anomaly_clips"
+
     # YOLO Settings
     YOLO_MODEL_NAME: str = "yolov8n.pt"
     YOLO_CLASSES: list[str] = ["person", "car", "bicycle", "dog", "cat"] # Default selection

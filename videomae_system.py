@@ -1,6 +1,9 @@
 import time
+import os
+import imageio
 from collections import deque
 from loguru import logger
+import cv2
 
 from config import settings
 from stream_loader import StreamLoader
@@ -81,7 +84,21 @@ class VideoMAESentinelSystem:
             return None
 
         result = self.detector.detect(vector, timestamp)
-        self.memory_store.add_record(vector, timestamp, result["is_anomaly"])
+
+        gif_path = None
+        if result["is_anomaly"]:
+            try:
+                os.makedirs(settings.ANOMALY_CLIP_DIR, exist_ok=True)
+                gif_filename = f"anomaly_{int(timestamp)}.gif"
+                gif_path = os.path.join(settings.ANOMALY_CLIP_DIR, gif_filename)
+
+                # Prepare frames for GIF (Convert BGR to RGB)
+                gif_frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in self.frame_buffer]
+                imageio.mimsave(gif_path, gif_frames, fps=settings.VIDEOMAE_SAMPLE_RATE)
+            except Exception as e:
+                logger.error(f"Failed to save anomaly GIF: {e}")
+
+        self.memory_store.add_record(vector, timestamp, result["is_anomaly"], gif_path=gif_path)
 
         return {
             "frame": frame,

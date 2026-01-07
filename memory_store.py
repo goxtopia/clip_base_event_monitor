@@ -18,7 +18,7 @@ class MemoryStore:
         # In-memory short-term buffer
         self.short_term_buffer = deque(maxlen=settings.HISTORY_WINDOW_SIZE)
 
-    def add_record(self, vector: list[float], timestamp: float, is_anomaly: bool):
+    def add_record(self, vector: list[float], timestamp: float, is_anomaly: bool, gif_path: str = None):
         """
         Add a record to both short-term memory and long-term storage (ChromaDB).
         """
@@ -33,6 +33,8 @@ class MemoryStore:
             "hour": dt.hour,
             "is_anomaly": is_anomaly
         }
+        if gif_path:
+            metadata["gif_path"] = gif_path
         
         try:
             self.collection.add(
@@ -42,6 +44,36 @@ class MemoryStore:
             )
         except Exception as e:
             logger.error(f"Failed to add record to ChromaDB: {e}")
+
+    def get_recent_anomalies(self, limit: int = 10) -> list[dict]:
+        """
+        Retrieve recent anomaly records from ChromaDB.
+        """
+        try:
+            # Query for anomalies
+            # ChromaDB doesn't strongly support "ORDER BY timestamp DESC" in simple queries without embeddings.
+            # We can retrieve items where is_anomaly=True.
+            # Efficient retrieval might be limited here.
+            # We'll fetch all anomalies (or a subset) and sort in Python for now.
+            # Ideally, we should manage this differently for scale, but for now:
+
+            result = self.collection.get(
+                where={"is_anomaly": True},
+                include=["metadatas"]
+            )
+
+            if not result or not result["metadatas"]:
+                return []
+
+            records = result["metadatas"]
+            # Sort by timestamp descending
+            records.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+
+            return records[:limit]
+
+        except Exception as e:
+            logger.error(f"Failed to fetch recent anomalies: {e}")
+            return []
 
     def get_short_term_mean(self) -> np.ndarray:
         """
