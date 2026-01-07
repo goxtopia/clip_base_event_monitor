@@ -168,4 +168,4 @@ while True:
             height=260,
             margin=dict(l=10, r=10, t=10, b=10)
         )
-        chart_placeholder.plotly_chart(fig, use_container_width=True)
+        chart_placeholder.plotly_chart(fig, key="similarity_chart", width="stretch")
