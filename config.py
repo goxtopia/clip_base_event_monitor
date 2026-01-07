@@ -22,8 +22,13 @@ class Config(BaseModel):
     # ROI Settings
     MOTION_THRESHOLD: float = 25.0  # Pixel difference threshold
     MIN_CONTOUR_AREA: int = 500     # Minimum area to be considered motion
+    MOTION_BLUR_SIZE: int = 21      # Gaussian Blur size (must be odd)
     ZERO_SHOT_LABELS: list[str] = ["a person", "a dog", "shadow", "light change"]
     
+    # YOLO Settings
+    YOLO_MODEL_NAME: str = "yolov8n.pt"
+    YOLO_CLASSES: list[str] = ["person", "car", "bicycle", "dog", "cat"] # Default selection
+
     # System Settings
     DEVICE: str = "cpu" # Will be updated dynamically if cuda/mps available
 

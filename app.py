@@ -89,6 +89,24 @@ with st.sidebar:
     settings.SIMILARITY_THRESHOLD = threshold
     
     st.divider()
+    st.subheader("Motion Detection")
+    motion_blur = st.slider("Denoise Blur Size", 1, 51, settings.MOTION_BLUR_SIZE, 2)
+    motion_thresh = st.slider("Motion Threshold", 0.0, 100.0, settings.MOTION_THRESHOLD, 1.0)
+    system.update_motion_settings(motion_blur, motion_thresh)
+    
+    st.divider()
+    st.subheader("YOLO Filter")
+    # Helper to get all COCO classes
+    all_coco_classes = list(system.object_detector.class_names.values())
+    selected_classes = st.multiselect(
+        "Object Classes",
+        all_coco_classes,
+        default=settings.YOLO_CLASSES
+    )
+    if selected_classes != system.yolo_classes:
+        system.update_yolo_classes(selected_classes)
+
+    st.divider()
     st.subheader("Zero-shot Labels")
     labels_input = st.text_area(
         "Enter labels (comma separated)", 
@@ -139,11 +157,24 @@ while True:
         # 1. Update Video
         frame_display = result['frame'].copy()
         
-        # Draw ROI Box
+        # Draw Boxes
+        
+        # 1. YOLO Boxes (Red)
+        for box in result.get('yolo_boxes', []):
+             x, y, w, h = box
+             cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 0, 255), 2)
+             cv2.putText(frame_display, "YOLO", (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+
+        # 2. Motion Box (Blue)
+        if result.get('motion_box'):
+             x, y, w, h = result['motion_box']
+             cv2.rectangle(frame_display, (x, y), (x+w, y+h), (255, 0, 0), 2)
+             cv2.putText(frame_display, "Motion", (x, y+h+15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+        # 3. Final ROI (Green)
         if result.get('bbox'):
             x, y, w, h = result['bbox']
-            # Draw rectangle
-            cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 255, 0), 3)
             # Draw label
             label_text = f"{result['label']} ({result['confidence']:.2f})"
             cv2.putText(frame_display, label_text, (x, y-10), 

@@ -5,8 +5,18 @@ from config import settings
 class MotionDetector:
     def __init__(self):
         # Using MOG2 for background subtraction
-        self.back_sub = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=16, detectShadows=True)
+        self.var_threshold = 16
+        self.blur_size = settings.MOTION_BLUR_SIZE
+        self.back_sub = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=self.var_threshold, detectShadows=True)
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+
+    def update_settings(self, blur_size: int, threshold: float):
+        if blur_size % 2 == 0: 
+            blur_size += 1
+        self.blur_size = blur_size
+        if abs(self.var_threshold - threshold) > 0.1:
+            self.var_threshold = threshold
+            self.back_sub.setVarThreshold(threshold)
 
     def detect(self, frame: np.ndarray) -> tuple[bool, tuple[int, int, int, int]]:
         """
@@ -14,8 +24,11 @@ class MotionDetector:
         Returns: (has_motion, bounding_box)
         bounding_box: (x, y, w, h) of the largest moving area.
         """
+        # Denoise
+        blurred = cv2.GaussianBlur(frame, (self.blur_size, self.blur_size), 0)
+
         # Apply background subtraction
-        fg_mask = self.back_sub.apply(frame)
+        fg_mask = self.back_sub.apply(blurred)
         
         # Remove noise (shadows are gray in MOG2, we can filter them or keep them)
         # Threshold to remove shadows (usually 127) if detectShadows=True

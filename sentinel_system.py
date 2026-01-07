@@ -10,6 +10,7 @@ from vector_engine import VectorEngine
 from memory_store import MemoryStore
 from detector import AnomalyDetector
 from motion_detector import MotionDetector
+from object_detector import ObjectDetector
 
 class SentinelSystem:
     def __init__(self):
@@ -24,11 +25,15 @@ class SentinelSystem:
         self.memory_store = MemoryStore()
         self.detector = AnomalyDetector(self.memory_store)
         self.motion_detector = MotionDetector()
+        self.object_detector = ObjectDetector()
         
         # Zero-shot setup
         self.current_labels = settings.ZERO_SHOT_LABELS
         self.text_vectors = None
         self._update_text_vectors()
+        
+        # YOLO setup
+        self.yolo_classes = settings.YOLO_CLASSES
 
     def _update_text_vectors(self):
         logger.info(f"Encoding text labels: {self.current_labels}")
@@ -38,6 +43,12 @@ class SentinelSystem:
         if new_labels != self.current_labels:
             self.current_labels = new_labels
             self._update_text_vectors()
+
+    def update_motion_settings(self, blur_size: int, threshold: float):
+        self.motion_detector.update_settings(blur_size, threshold)
+
+    def update_yolo_classes(self, classes: list[str]):
+        self.yolo_classes = classes
 
     def start(self):
         if not self.running:
@@ -65,37 +76,35 @@ class SentinelSystem:
 
         timestamp = time.time()
         
-        # 2. Motion Detection
-        has_motion, bbox = self.motion_detector.detect(frame)
+        # 2. Hybrid Detection (Motion + YOLO)
         
-        # Logic: 
-        # If motion -> Crop -> Encode -> Classify -> Detect Anomaly (maybe?)
-        # If no motion -> Encode Full -> Detect Anomaly (Standard)
+        # A. Motion
+        has_motion, motion_box = self.motion_detector.detect(frame)
         
-        # For simplicity and robustness in this demo:
-        # We always encode something.
-        # If motion: we encode the crop AND classify it.
-        # If no motion: we encode the full frame.
+        # B. YOLO
+        yolo_boxes = self.object_detector.detect(frame, self.yolo_classes)
         
-        # But wait, standard anomaly detection relies on comparing vector history.
-        # Mixing "Full Frame Vectors" and "Crop Vectors" in the same memory store (ChromaDB) 
-        # is dangerous because they represent different semantic scales.
-        # The prompt says: "If no motion: Full frame vector comparison (low freq)."
-        # This implies we should separate the streams or usage.
-        
-        # Ideally, we have two memory stores or just use the same one but with metadata?
-        # Or maybe we rely on the fact that crop vectors will look VERY different from full frame vectors,
-        # so they naturally won't match well?
-        
-        # Let's refine the logic for the DEMO:
-        # We primarily want to detect objects moving.
+        # C. Merge Boxes (Find Union)
+        all_boxes = []
+        if has_motion and motion_box:
+            all_boxes.append(motion_box)
+        all_boxes.extend(yolo_boxes)
         
         detection_mode = "Full"
         roi_img = frame
+        final_box = None
         
-        if has_motion and bbox is not None:
+        if all_boxes:
             detection_mode = "ROI"
-            x, y, w, h = bbox
+            # Calculate union bounding box
+            min_x = min([b[0] for b in all_boxes])
+            min_y = min([b[1] for b in all_boxes])
+            max_x = max([b[0] + b[2] for b in all_boxes])
+            max_y = max([b[1] + b[3] for b in all_boxes])
+            
+            final_box = (min_x, min_y, max_x - min_x, max_y - min_y)
+            x, y, w, h = final_box
+
             # Ensure crop is within bounds
             h_img, w_img = frame.shape[:2]
             x = max(0, x)
@@ -103,12 +112,14 @@ class SentinelSystem:
             w = min(w, w_img - x)
             h = min(h, h_img - y)
             
+            # Crop
             roi_img = frame[y:y+h, x:x+w]
-            # Safety check for empty crop
+            
+            # Safety check
             if roi_img.size == 0:
                 roi_img = frame
                 detection_mode = "Full (Fallback)"
-                bbox = None # Treat as no motion
+                final_box = None
         
         # 3. Encode
         try:
@@ -161,7 +172,9 @@ class SentinelSystem:
             "reason": result["reason"],
             "sim_short": result["sim_short"],
             "sim_long": result["sim_long"],
-            "bbox": bbox, # For UI visualization
+            "bbox": final_box, # Merged Box
+            "motion_box": motion_box if has_motion else None,
+            "yolo_boxes": yolo_boxes,
             "label": label,
             "confidence": conf,
             "mode": detection_mode

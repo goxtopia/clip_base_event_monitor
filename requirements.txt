@@ -9,4 +9,5 @@ plotly
 pydantic
 streamlit
 transformers
+ultralytics
 watchfiles
