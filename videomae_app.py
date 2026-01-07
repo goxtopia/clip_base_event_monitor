@@ -106,6 +106,9 @@ with col2:
     st.subheader("Similarity Monitor")
     chart_placeholder = st.empty()
 
+st.divider()
+history_placeholder = st.empty()
+
 if "chart_data" not in st.session_state:
     st.session_state.chart_data = pd.DataFrame(columns=["Time", "Similarity", "LongTerm", "Threshold"])
 if "chart_key" not in st.session_state:
@@ -179,24 +182,25 @@ while True:
         )
 
     # Anomaly History Section
-    with st.expander("Anomaly History (Last 10)", expanded=True):
-        anomalies = system.memory_store.get_recent_anomalies(limit=10)
-        if anomalies:
-            # Create grid layout
-            cols = st.columns(3)
-            for idx, anomaly in enumerate(anomalies):
-                with cols[idx % 3]:
-                    ts = anomaly.get("timestamp", 0)
-                    dt_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-                    st.caption(f"🚨 {dt_str}")
+    with history_placeholder.container():
+        with st.expander("Anomaly History (Last 10)", expanded=True):
+            anomalies = system.memory_store.get_recent_anomalies(limit=10)
+            if anomalies:
+                # Create grid layout
+                cols = st.columns(3)
+                for idx, anomaly in enumerate(anomalies):
+                    with cols[idx % 3]:
+                        ts = anomaly.get("timestamp", 0)
+                        dt_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+                        st.caption(f"🚨 {dt_str}")
 
-                    gif_path = anomaly.get("gif_path")
-                    if gif_path:
-                        try:
-                            st.image(gif_path)
-                        except Exception as e:
-                            st.error(f"Error loading GIF: {e}")
-                    else:
-                        st.text("No preview available")
-        else:
-            st.info("No anomalies recorded yet.")
+                        gif_path = anomaly.get("gif_path")
+                        if gif_path:
+                            try:
+                                st.image(gif_path)
+                            except Exception as e:
+                                st.error(f"Error loading GIF: {e}")
+                        else:
+                            st.text("No preview available")
+            else:
+                st.info("No anomalies recorded yet.")
